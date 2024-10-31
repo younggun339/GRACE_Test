@@ -128,12 +128,15 @@ class GCN(nn.Module):
         # tranditional gcn
         x = F.dropout(x, self.dropout, training=self.training)
 
-        x = F.relu(self.gc1(x, adj))
+        x = F.relu(self.gc1(x, adj)) ## relu : 비선형성 추가. 
         x = F.dropout(x, self.dropout, training=self.training)
         # x = F.relu(self.gc2(x, adj))
         x = self.gc2(x, adj)
+        ## 신기하게 dropout을 두번이나 거치네... 각 레이어 들어가기 전에 해야하는걸까. Relu는 첫번째 레이어만 했고...
+        ## 앞부분에서 그래프를 가공하고, s를 덧붙인 과정도 쬠 특이해.. 
 
-
+        ## 이하 아래는 엣지... 자체를, 방향성 있는 그래프를 만들어 엣지 예측을 위함.......이라고 한다. 
+        # 즉, train_ids로 이제 엣지들을 linear등을 통과해 알린다음 예측이 잘못되었다면 linear의 가중치를 업데이트하겠지..
         # add s
         # x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat((x, s), dim=1)
