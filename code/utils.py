@@ -65,11 +65,12 @@ def accuracy(output, labels):
     correct = correct.sum()
     return correct / len(labels)
 
+## LP : link prediction 
 def accuracy_LP(output, labels):
-    output = torch.ge(torch.sigmoid(output), 0.5).type(torch.IntTensor)
-    labels = labels.type(torch.IntTensor)
-    correct_prediction = torch.eq(output, labels)
-    accuracy = torch.mean(correct_prediction.type(torch.FloatTensor))
+    output = torch.ge(torch.sigmoid(output), 0.5).type(torch.IntTensor) ## sigmoid로 라벨 예측
+    labels = labels.type(torch.IntTensor) ## 실제 정답 라벨
+    correct_prediction = torch.eq(output, labels) ## 비교
+    accuracy = torch.mean(correct_prediction.type(torch.FloatTensor)) ## 정확도 계산 
     return accuracy
 
 

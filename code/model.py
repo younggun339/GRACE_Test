@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from layer import GraphConvolution, GraphAttentionLayer
 
+
+## 평균과 로그 분산을 계산하는 걸로 보아 SCM 쓸때 잠재 변수용... 그것인듯. 
 class Encoder(nn.Module):
     def __init__(self, nhid, nz) -> None:
         super().__init__()
@@ -14,8 +16,8 @@ class Encoder(nn.Module):
     
     def forward(self, x):
         #x = torch.cat((x, y), dim=1)
-        mu = F.relu(self.linear1(x))
-        logvar = F.relu(self.linear2(x))
+        mu = F.relu(self.linear1(x)) ## 평균
+        logvar = F.relu(self.linear2(x)) ## 로그분산
         # variance = mu.mean(dim=1)
         # print(logvar.mean(dim=1).sum())
         # print(variance.sum())
@@ -33,20 +35,23 @@ class Decoder(nn.Module):
         return x
 
 
+## 같은 CausalGNN이라도 모델 1. 레이어 자체를 설계하였음. 2. 계층을 플래그에 따라 base_model을 다르게 설계하였음. 
 class CausalGNN(nn.Module):
     def __init__(self, nfeat, nhid, nz, ns,dropout, alpha, base_model='gcn', nheads=8, flag=False) -> None:
         super().__init__()
         self.dropout = dropout
         # concat: whether input elu layer
-        # encoder 
+        # encoder  ## 분포 만들기!
         self.attention_z = GraphAttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True)
         self.encoder = Encoder(nhid, nz)
 
-        # z->s
+        # z->s 
         self.attention_s = GraphAttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True)
         self.linear_s = nn.Linear(nhid + nz, ns)
 
-        # decoder
+        ## attention layer 자체를 두 개를 만든... 것 같다.
+
+        # decoder ## 새 유전자 행렬 만들기!
         self.decoder = Decoder(ns, nfeat)
 
         # predict
@@ -60,8 +65,8 @@ class CausalGNN(nn.Module):
 
     def forward(self, feat, adj, train_ids, stage=None, z_mean=None):
         # x = Wx
-        h_z = self.attention_z(feat, adj)
-        h_s = self.attention_s(feat, adj)
+        h_z = self.attention_z(feat, adj) ## feature와 adj로 임베딩 벡터를 만든다. 잠재 공간에서의 벡터.
+        h_s = self.attention_s(feat, adj) ## 새로운 특성으로 변환된 벡터.
         # x = F.dropout(h_z, self.dropout, training=self.training)
         x = h_z
         mu = [] 
@@ -76,6 +81,8 @@ class CausalGNN(nn.Module):
         else: 
             z = z_mean.repeat(x.size()[0], 1)
 
+        ## 위와 같은 과정으로 잠재벡터를 만든다.
+        # 그리고 아래와 같은 과정으로 이전에 뽑았던 특징 벡터 + 잠재 공간 벡터. 후 정규화.로 최종 s를 뽑는다.(S == cs)
         # z->s
         x = h_s
         x = torch.cat((z, x), dim=1)
@@ -86,7 +93,7 @@ class CausalGNN(nn.Module):
         recon_x = self.decoder(s)
 
         # predict
-        output = self.base_model(s, recon_x, adj, train_ids)
+        output = self.base_model(s, recon_x, adj, train_ids) ## 근데 output에만 베이스 모델이 다를 뿐이지 앞쪽 계층은... 독자적으로 레이러를 세운듯. 
         return z_mean, output, recon_x, mu, logvar, z_sum
     
     def reparametrize(self, mu, logvar):
@@ -96,8 +103,8 @@ class CausalGNN(nn.Module):
         # z = torch.randn(std.size()) * std + mu
     
         # eps = Variable(torch.randn(mu.size(0), mu.size(1))).cuda()
-        eps = torch.randn_like(logvar)
-        z = mu + eps * torch.exp(logvar/2)
+        eps = torch.randn_like(logvar) ## 랜덤 노이즈 eps 생성
+        z = mu + eps * torch.exp(logvar/2) ## z를 표준편차와 랜덤 노이즈 등을 합해 z 생성
         return z
 
 

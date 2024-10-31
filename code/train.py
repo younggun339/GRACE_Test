@@ -54,12 +54,12 @@ else:
 adj_train = F.normalize(adj_train, p=1, dim=1)
 
 # model
-model =CausalGNN(nfeat=feature.shape[1],
-                nhid=args.hidden,
-                dropout=args.dropout,
-                nz=args.nz,
-                ns=args.ns,
-                alpha=args.alpha, 
+model =CausalGNN(nfeat=feature.shape[1], ## 입력 피쳐수
+                nhid=args.hidden, ## 히든 레이어 수
+                dropout=args.dropout, ## 드롭아웃 수
+                nz=args.nz, ## 잠재 변수 공간의 차원 수
+                ns=args.ns, ## 샘플수?
+                alpha=args.alpha,  ## 손실 가중치 
                 flag=args.flag).to(device)
 
 optimizer = optim.Adam(model.parameters(),
@@ -79,6 +79,8 @@ if args.cuda:
     val_labels = val_labels.to(device)
     test_labels = test_labels.to(device)
     weight_CE = torch.FloatTensor([1, 23, 23]).to(device)
+
+## GPU 사용에는 명시적으로 전달하는게 좋다네.. CPU-> GPU과정이 필요하다고 함
 
 if args.flag:
     Eval_acc = torchmetrics.Accuracy(task='multiclass', num_classes = 3).to(device)
